@@ -1,0 +1,75 @@
+name: Terraform CI
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  terraform-ci:
+    name: Terraform CI
+    runs-on: ubuntu-latest
+
+    steps:
+
+      # Checkout code
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # Setup Terraform
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      # Terraform Format
+      - name: Terraform Format
+        run: terraform fmt -check -recursive
+
+      # Terraform Init
+      - name: Terraform Init
+        working-directory: environments/dev
+        run: terraform init -backend=false
+
+      # Terraform Validate
+      - name: Terraform Validate
+        working-directory: environments/dev
+        run: terraform validate
+
+      # TFLint
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v5
+
+      - name: TFLint
+        run: |
+          tflint --init
+          tflint --recursive
+
+      # Checkov
+      - name: Checkov Security Scan
+        uses: bridgecrewio/checkov-action@v12
+        with:
+          directory: .
+          framework: terraform
+
+      # tfsec
+      - name: tfsec Security Scan
+        uses: aquasecurity/tfsec-action@v1.0.3
+
+      # Gitleaks
+      - name: Gitleaks Secret Scan
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Terratest
+      - name: Setup Go
+        if: hashFiles('tests/**/*.go') != ''
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
+
+      - name: Terratest
+        if: hashFiles('tests/**/*.go') != ''
+        working-directory: tests
+        run: |
+          go mod download
+          go test -v ./...
