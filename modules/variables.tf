@@ -1,3 +1,0 @@
-variable "rg" {
-  default = "rgtest"
-}
