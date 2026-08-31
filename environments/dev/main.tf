@@ -1,4 +1,7 @@
 module "resource_group" {
   source = "../../modules/resource-group"
-  rg     = var.rg
+
+  for_each = var.rg
+
+  rg = each.value
 }
